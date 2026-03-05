@@ -276,4 +276,72 @@ function mkCard(fname){
   const id=++cid;
   const sn=fname.replace(/\.(pdf|jpe?g|png)$/i,'').substring(0,28);
   const el=document.createElement('div');el.className='rcard';el.id=`c${id}`;
-  el.innerHTML=`<div class="rcard-head"><span>👤</span><input type="text" id="n${id}" placeholder="顾客名字（可选）" oninput="rf(${id})"><div class="fbadge" title="${fname}">${sn}</div><button class="del-btn" onclick="document.getElementById('c${id}').remove()">✕</button></div><div class="rcard-body"><div class="srow loading" id="s${id}"><div class="spin"></div><span>准备中...</span></div><div id="ct${id}" style="display:none"><div class="agrid"><div class="abox L"><div class="albl">Life</div><input class="ainput" id="al${id}" type="number" placeholder="0.00" min="0" step="0.01" oninput="rf(${id})"></div><div class="abox M"><div class="albl">Medical</div><input class="ainput" id="am${id}" type="number" placeholder="0.00" min="0" step="0.01" oninput="rf(${id})"></div><div class="abox ML"><div class="albl">Med/Life</div><input class="ain
+  el.innerHTML=`<div class="rcard-head"><span>👤</span><input type="text" id="n${id}" placeholder="顾客名字（可选）" oninput="rf(${id})"><div class="fbadge" title="${fname}">${sn}</div><button class="del-btn" onclick="document.getElementById('c${id}').remove()">✕</button></div><div class="rcard-body"><div class="srow loading" id="s${id}"><div class="spin"></div><span>准备中...</span></div><div id="ct${id}" style="display:none"><div class="agrid"><div class="abox L"><div class="albl">Life</div><input class="ainput" id="al${id}" type="number" placeholder="0.00" min="0" step="0.01" oninput="rf(${id})"></div><div class="abox M"><div class="albl">Medical</div><input class="ainput" id="am${id}" type="number" placeholder="0.00" min="0" step="0.01" oninput="rf(${id})"></div><div class="abox ML"><div class="albl">Med/Life</div><input class="ainput" id="aml${id}" type="number" placeholder="0.00" min="0" step="0.01" oninput="rf(${id})"></div><div class="abox E"><div class="albl">EPF</div><input class="ainput" id="ae${id}" type="number" placeholder="0.00" min="0" step="0.01" oninput="rf(${id})"></div></div><div class="cstrip"><div class="cbox L"><div class="clbl">Life 可报</div><div class="cval" id="rl${id}">-</div><div class="cwarn" id="wl${id}"></div></div><div class="cbox M"><div class="clbl">Medical 可报</div><div class="cval" id="rm${id}">-</div><div class="cwarn" id="wm${id}"></div></div><div class="cbox E"><div class="clbl">EPF 可报</div><div class="cval" id="re${id}">-</div><div class="cwarn" id="we${id}"></div></div></div><div class="mbox" id="mg${id}">-</div><button class="cbtn" id="cb${id}" onclick="cp('mg${id}','cb${id}',null)">📋 一键复制 WhatsApp 信息</button></div></div>`;
+  document.getElementById('rList').prepend(el);
+  return id;
+}
+async function doFile(file,id){
+  const ss=(cls,html)=>{const e=document.getElementById(`s${id}`);e.className=`srow ${cls}`;e.innerHTML=html;};
+  try{
+    let b64,mt;
+    if(file.type==='application/pdf'){
+      ss('loading','<div class="spin"></div><span>PDF 转换图片中...</span>');
+      b64=await pdfToJpeg(file);mt='image/jpeg';
+    }else{
+      ss('loading','<div class="spin"></div><span>读取图片中...</span>');
+      b64=await imgToB64(file);mt=file.type;
+    }
+    ss('loading','<div class="spin"></div><span>AI 分析中...</span>');
+    const p=await scanImg(b64,mt);
+    const sv=(eid,v)=>{const e=document.getElementById(eid);if(e)e.value=v>0?(+v).toFixed(2):'';};
+    sv(`al${id}`,p.life||0);sv(`am${id}`,p.medical||0);sv(`aml${id}`,p.medlife||0);sv(`ae${id}`,p.epf||0);
+    if(p.name){const ne=document.getElementById(`n${id}`);if(ne&&!ne.value)ne.value=p.name;}
+    ss('ok','✅ 扫描完成，请确认金额');
+    document.getElementById(`ct${id}`).style.display='block';
+    rf(id);
+  }catch(err){
+    ss('err',`❌ ${err.message||err}`);
+    document.getElementById(`ct${id}`).style.display='block';
+    rf(id);
+  }
+}
+function rf(id){
+  const gv=eid=>{const e=document.getElementById(eid);return e?parseFloat(e.value)||0:0;};
+  const life=gv(`al${id}`),med=gv(`am${id}`),ml=gv(`aml${id}`),epf=gv(`ae${id}`);
+  const name=document.getElementById(`n${id}`)?.value.trim()||'';
+  const{lf,mf,ef,lml,mml}=calc(life,med,ml,epf);
+  const se=(eid,v)=>{const e=document.getElementById(eid);if(e)e.textContent=v;};
+  se(`rl${id}`,`RM ${f(lf)}`);se(`rm${id}`,`RM ${f(mf)}`);se(`re${id}`,`RM ${f(ef)}`);
+  se(`wl${id}`,(life+ml)>LMAX?'⚠ 上限RM3,000':mml>0?`含ML:RM${f(lml)}`:'');
+  se(`wm${id}`,(med+mml)>MMAX?'⚠ 上限RM4,000':mml>0?`+ML×60%:RM${f(mml)}`:'');
+  se(`we${id}`,epf>EMAX?'⚠ 上限RM4,000':'');
+  const msg=buildMsg(name,life,med,ml,epf);
+  const me=document.getElementById(`mg${id}`);if(me)me.textContent=msg||'请输入金额...';
+}
+function mVals(id){return[...document.querySelectorAll(`#${id} input`)].map(e=>parseFloat(e.value)||0).filter(v=>v>0);}
+function mAdd(id){
+  const c=document.getElementById(id),d=document.createElement('div');d.className='irow';
+  d.innerHTML='<div class="iwrap"><span class="pre">RM</span><input type="number" placeholder="0.00" oninput="mGen()" min="0" step="0.01"></div><button class="rmbtn" onclick="this.parentElement.remove();mGen()">✕</button>';
+  c.appendChild(d);d.querySelector('input').focus();
+}
+function mGen(){
+  const sum=id=>mVals(id).reduce((a,b)=>a+b,0);
+  const life=sum('fLife'),med=sum('fMed'),ml=sum('fML'),epf=sum('fEPF');
+  const name=document.getElementById('mName').value.trim();
+  const{lf,mf,ef,lml,mml}=calc(life,med,ml,epf);
+  document.getElementById('mLR').textContent=`RM ${f(lf)}`;
+  document.getElementById('mMR').textContent=`RM ${f(mf)}`;
+  document.getElementById('mER').textContent=`RM ${f(ef)}`;
+  document.getElementById('mLO').style.display=(life+ml)>LMAX?'block':'none';
+  document.getElementById('mMO').style.display=(med+mml)>MMAX?'block':'none';
+  document.getElementById('mEO').style.display=epf>EMAX?'block':'none';
+  const lb=document.getElementById('mLB'),mb=document.getElementById('mMB');
+  if(ml>0&&mml>0){lb.innerHTML=`含Med/Life:<b>RM${f(lml)}</b>`;mb.innerHTML=`含ML×60%:<b>RM${f(mml)}</b>`;}
+  else if(ml>0){lb.innerHTML=`含Med/Life:<b>RM${f(ml)}</b>`;mb.innerHTML='';}
+  else{lb.innerHTML='';mb.innerHTML='';}
+  const msg=buildMsg(name,life,med,ml,epf);
+  document.getElementById('mOut').textContent=msg||'请输入金额以生成信息...';
+}
+</script>
+</body>
+</html>
