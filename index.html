@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tax Statement WhatsApp Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f1117;--card:#1a1d27;--card2:#21253a;
+  --accent:#4ade80;--a2:#22d3ee;--gold:#fbbf24;
+  --text:#e2e8f0;--muted:#64748b;--border:#2d3354;
+  --life:#a78bfa;--med:#f472b6;--ml:#fb923c;--epf:#34d399;--red:#f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans SC',sans-serif;min-height:100vh;padding:20px 14px 60px;}
+.grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(74,222,128,.03)1px,transparent 1px),linear-gradient(90deg,rgba(74,222,128,.03)1px,transparent 1px);background-size:40px 40px;}
+.wrap{max-width:620px;margin:0 auto;position:relative;z-index:1;}
+header{text-align:center;margin-bottom:24px;}
+.badge{display:inline-block;background:linear-gradient(135deg,rgba(74,222,128,.15),rgba(34,211,238,.15));border:1px solid rgba(74,222,128,.3);color:var(--accent);font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:10px;font-family:'DM Mono',monospace;}
+h1{font-size:24px;font-weight:700;color:#fff;line-height:1.3;}
+h1 span{color:var(--accent);}
+.sub{color:var(--muted);font-size:13px;margin-top:5px;}
+.tabs{display:flex;gap:8px;margin-bottom:18px;}
+.tab{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:13px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:all .2s;text-align:center;}
+.tab.on{background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.4);color:var(--accent);font-weight:600;}
+.panel{display:none;}.panel.on{display:block;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;}
+.ctitle{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:14px;font-family:'DM Mono',monospace;}
+.upzone{border:2px dashed var(--border);border-radius:12px;padding:26px 18px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.upzone:hover,.upzone.over{border-color:var(--a2);background:rgba(34,211,238,.05);}
+.upzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.up-icon{font-size:34px;margin-bottom:8px;}
+.up-title{color:var(--a2);font-size:14px;font-weight:600;margin-bottom:4px;}
+.up-sub{color:var(--muted);font-size:12px;}
+.up-hint{margin-top:6px;font-size:11px;color:rgba(74,222,128,.6);font-family:'DM Mono',monospace;}
+.prog-wrap{margin-top:12px;display:none;}
+.prog-wrap.show{display:block;}
+.prog-info{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px;}
+.prog-track{background:var(--border);border-radius:4px;height:5px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--a2),var(--accent));border-radius:4px;transition:width .3s;width:0%;}
+#rList{display:flex;flex-direction:column;gap:14px;margin-top:4px;}
+.rcard{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.rcard-head{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--card2);border-bottom:1px solid var(--border);}
+.rcard-head input{flex:1;background:transparent;border:none;color:#fff;font-size:13px;font-weight:600;font-family:'Noto Sans SC',sans-serif;outline:none;min-width:0;}
+.rcard-head input::placeholder{color:var(--muted);font-weight:400;}
+.fbadge{font-size:10px;font-family:'DM Mono',monospace;background:rgba(34,211,238,.1);color:var(--a2);border:1px solid rgba(34,211,238,.2);border-radius:6px;padding:2px 7px;white-space:nowrap;flex-shrink:0;max-width:140px;overflow:hidden;text-overflow:ellipsis;}
+.del-btn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;flex-shrink:0;}
+.rcard-body{padding:12px 14px;}
+.srow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:12px;margin-bottom:10px;}
+.srow.loading{background:rgba(34,211,238,.08);color:var(--a2);border:1px solid rgba(34,211,238,.2);}
+.srow.ok{background:rgba(74,222,128,.08);color:var(--accent);border:1px solid rgba(74,222,128,.2);}
+.srow.err{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.spin{width:12px;height:12px;border:2px solid rgba(34,211,238,.3);border-top-color:var(--a2);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.agrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px;}
+.abox{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:9px;}
+.abox.L{border-color:rgba(167,139,250,.4);}.abox.M{border-color:rgba(244,114,182,.4);}.abox.ML{border-color:rgba(251,146,60,.4);}.abox.E{border-color:rgba(52,211,153,.4);}
+.albl{font-size:9px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;margin-bottom:3px;}
+.abox.L .albl{color:var(--life);}.abox.M .albl{color:var(--med);}.abox.ML .albl{color:var(--ml);}.abox.E .albl{color:var(--epf);}
+.ainput{background:transparent;border:none;color:#fff;font-size:12px;font-weight:700;font-family:'DM Mono',monospace;width:100%;outline:none;}
+.ainput::placeholder{color:var(--muted);font-weight:400;}
+.cstrip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.cbox{background:var(--bg);border-radius:8px;padding:8px 10px;}
+.cbox.L{border-left:3px solid var(--life);}.cbox.M{border-left:3px solid var(--med);}.cbox.E{border-left:3px solid var(--epf);}
+.clbl{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;}
+.cval{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:#fff;}
+.cwarn{font-size:9px;color:var(--gold);}
+.mbox{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:11px 13px;font-size:13px;line-height:1.8;white-space:pre-wrap;color:var(--text);word-break:break-word;margin-bottom:8px;}
+.cbtn{width:100%;background:linear-gradient(135deg,#4ade80,#22d3ee);color:#0f1117;border:none;border-radius:9px;padding:11px;font-size:13px;font-weight:700;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:all .2s;}
+.cbtn.done{background:linear-gradient(135deg,#34d399,#6ee7b7);}
+.slbl{font-size:11px;color:var(--a2);text-transform:uppercase;letter-spacing:1.5px;font-family:'DM Mono',monospace;margin-bottom:9px;display:flex;align-items:center;gap:8px;}
+.slbl::after{content:'';flex:1;height:1px;background:var(--border);}
+.tag{font-size:10px;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:9px;font-weight:500;}
+.tL{background:rgba(167,139,250,.15);color:var(--life);border:1px solid rgba(167,139,250,.3);}
+.tM{background:rgba(244,114,182,.15);color:var(--med);border:1px solid rgba(244,114,182,.3);}
+.tML{background:rgba(251,146,60,.15);color:var(--ml);border:1px solid rgba(251,146,60,.3);}
+.tE{background:rgba(52,211,153,.15);color:var(--epf);border:1px solid rgba(52,211,153,.3);}
+.irow{display:flex;gap:8px;margin-bottom:7px;}
+.iwrap{flex:1;position:relative;}
+.pre{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;font-family:'DM Mono',monospace;pointer-events:none;}
+input[type=text],input[type=number]{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;padding:10px 12px 10px 34px;outline:none;transition:border-color .2s;}
+input[type=text]{padding-left:12px;}
+input:focus{border-color:var(--a2);}
+input::placeholder{color:var(--muted);}
+.addbtn{background:rgba(74,222,128,.08);border:1px dashed rgba(74,222,128,.3);color:var(--accent);border-radius:9px;padding:6px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:'Noto Sans SC',sans-serif;font-size:12px;margin-top:2px;}
+.rmbtn{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red);border-radius:7px;padding:8px 9px;font-size:12px;cursor:pointer;flex-shrink:0;}
+.div{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.mlnote{background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.2);border-radius:9px;padding:9px 11px;font-size:12px;color:rgba(251,146,60,.9);margin-bottom:9px;line-height:1.6;}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px;}
+.rbox{background:var(--bg);border-radius:11px;padding:13px;border:1px solid var(--border);}
+.rbox.L{border-color:rgba(167,139,250,.4);}.rbox.M{border-color:rgba(244,114,182,.4);}.rbox.E{border-color:rgba(52,211,153,.4);grid-column:1/-1;}
+.rlbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;font-family:'DM Mono',monospace;}
+.rbox.L .rlbl{color:var(--life);}.rbox.M .rlbl{color:var(--med);}.rbox.E .rlbl{color:var(--epf);}
+.ramt{font-size:21px;font-weight:700;font-family:'DM Mono',monospace;color:#fff;}
+.rmax{font-size:11px;color:var(--muted);margin-top:2px;}
+.rover{color:var(--gold);font-size:11px;margin-top:2px;}
+.rbrk{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5;}
+.rbrk b{color:var(--ml);}
+.mfb{display:none;margin-top:6px;font-size:12px;color:var(--muted);text-align:center;}
+@media(max-width:480px){.agrid{grid-template-columns:1fr 1fr;}.rgrid{grid-template-columns:1fr;}.rbox.E{grid-column:1;}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+<header>
+  <div class="badge">Malaysia Income Tax 2025</div>
+  <h1>Tax Statement<br><span>WhatsApp 信息生成器</span></h1>
+  <p class="sub">批量扫描 · 自动计算 · 一键复制</p>
+</header>
+<div class="tabs">
+  <div class="tab on" onclick="switchTab('scan')">📄 扫描文件（批量）</div>
+  <div class="tab" onclick="switchTab('manual')">✏️ 手动输入</div>
+</div>
+<div class="panel on" id="pScan">
+  <div class="card">
+    <div class="ctitle">上传文件（PDF 或 JPG/PNG，可多选）</div>
+    <div class="upzone" id="upZone">
+      <input type="file" id="fInput" accept="image/*,.pdf" multiple onchange="onFiles(event)">
+      <div class="up-icon">📂</div>
+      <div class="up-title">点击上传 / 拖放到这里</div>
+      <div class="up-sub">支持 PDF、JPG、PNG · 可一次选多份</div>
+      <div class="up-hint">▸ Great Eastern · AIA · Prudential 均支持</div>
+    </div>
+    <div class="prog-wrap" id="progWrap">
+      <div class="prog-info"><span id="progLbl">处理中...</span><span id="progCnt">0/0</span></div>
+      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+    </div>
+  </div>
+  <div id="rList"></div>
+</div>
+<div class="panel" id="pManual">
+  <div class="card">
+    <div class="ctitle">顾客信息</div>
+    <input type="text" id="mName" placeholder="顾客名字（可选）" oninput="mGen()">
+  </div>
+  <div class="card">
+    <div class="ctitle">保险金额输入</div>
+    <div class="slbl">Life Insurance <span class="tag tL">Max RM3,000</span></div>
+    <div id="fLife"><div class="irow"><div class="iwrap"><span class="pre">RM</span><input type="number" placeholder="0.00" oninput="mGen()" min="0" step="0.01"></div></div></div>
+    <button class="addbtn" onclick="mAdd('fLife')">＋ 添加</button>
+    <div class="div"></div>
+    <div class="slbl">Medical Insurance <span class="tag tM">Max RM4,000</span></div>
+    <div id="fMed"><div class="irow"><div class="iwrap"><span class="pre">RM</span><input type="number" placeholder="0.00" oninput="mGen()" min="0" step="0.01"></div></div></div>
+    <button class="addbtn" onclick="mAdd('fMed')">＋ 添加</button>
+    <div class="div"></div>
+    <div class="slbl">Medical / Life <span class="tag tML">特殊分配</span></div>
+    <div class="mlnote">💡 优先计入 <b>Life</b>。若 Life 超过 RM3,000，超出部分以 <b>60%</b> 转入 Medical。</div>
+    <div id="fML"><div class="irow"><div class="iwrap"><span class="pre">RM</span><input type="number" placeholder="0.00" oninput="mGen()" min="0" step="0.01"></div></div></div>
+    <button class="addbtn" onclick="mAdd('fML')">＋ 添加</button>
+    <div class="div"></div>
+    <div class="slbl">EPF <span class="tag tE">Max RM4,000</span></div>
+    <div id="fEPF"><div class="irow"><div class="iwrap"><span class="pre">RM</span><input type="number" placeholder="0.00" oninput="mGen()" min="0" step="0.01"></div></div></div>
+    <button class="addbtn" onclick="mAdd('fEPF')">＋ 添加</button>
+  </div>
+  <div class="card">
+    <div class="ctitle">计算结果</div>
+    <div class="rgrid">
+      <div class="rbox L"><div class="rlbl">Life</div><div class="ramt" id="mLR">RM 0.00</div><div class="rmax">Max RM3,000</div><div class="rover" id="mLO" style="display:none">⚠ 超过上限</div><div class="rbrk" id="mLB"></div></div>
+      <div class="rbox M"><div class="rlbl">Medical</div><div class="ramt" id="mMR">RM 0.00</div><div class="rmax">Max RM4,000</div><div class="rover" id="mMO" style="display:none">⚠ 超过上限</div><div class="rbrk" id="mMB"></div></div>
+      <div class="rbox E"><div class="rlbl">EPF</div><div class="ramt" id="mER">RM 0.00</div><div class="rmax">Max RM4,000</div><div class="rover" id="mEO" style="display:none">⚠ 超过上限</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ctitle">WhatsApp 信息预览</div>
+    <div class="mbox" id="mOut">请输入金额以生成信息...</div>
+    <button class="cbtn" id="mCBtn" onclick="cp('mOut','mCBtn','mFB')" style="margin-top:10px">📋 一键复制 WhatsApp 信息</button>
+    <div class="mfb" id="mFB">⬆ 请长按上方信息手动复制</div>
+  </div>
+</div>
+</div>
+<script>
+if(window.pdfjsLib)window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const LMAX=3000,MMAX=4000,EMAX=4000;
+let cid=0;
+function switchTab(t){
+  ['scan','manual'].forEach((n,i)=>{
+    document.querySelectorAll('.tab')[i].classList.toggle('on',n===t);
+    document.getElementById(n==='scan'?'pScan':'pManual').classList.toggle('on',n===t);
+  });
+}
+function f(n){return(+n).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function calc(life,med,ml,epf){
+  const lc=life+ml;let lml=ml,mml=0;
+  if(lc>LMAX){const ov=Math.min(lc-LMAX,ml);lml=ml-ov;mml=ov*.6;}
+  return{lf:Math.min(life+lml,LMAX),mf:Math.min(med+mml,MMAX),ef:Math.min(epf,EMAX),lml,mml};
+}
+function buildMsg(name,life,med,ml,epf){
+  const{lf,mf,ef,lml,mml}=calc(life,med,ml,epf);
+  if(!life&&!med&&!ml&&!epf)return null;
+  const g=name?`${name}，`:'';
+  let m=`${g}这是你2025的premium statement，可以用来fill in income tax~ 😊\n\n`;
+  m+=`温馨提醒2026年马来西亚（呈报2025课税年）个人所得税的教育和医疗保险减免上限已提升至 RM4,000，所以在医疗保险medical 一栏可以报RM4,000（Max），人寿保险life 可以报RM3,000（Max）。\nEPF 独立分出来了，可以报RM4,000~\n\n`;
+  if(life>0||lml>0){
+    const p=[];if(life>0)p.push(`RM${f(life)}`);if(lml>0)p.push(`RM${f(lml)} (Medical/Life)`);
+    const s=life+lml;
+    m+=p.length>1?`所以建议你可把 ${p.join(' + ')} = *RM${f(Math.min(s,LMAX))}* 放在 *Life*（Max RM3,000）一栏～\n\n`:`建议你把 *RM${f(Math.min(s,LMAX))}* 放在 *Life*（Max RM3,000）一栏～\n\n`;
+  }
+  if(med>0||mml>0){
+    const p=[];if(med>0)p.push(`RM${f(med)}`);if(mml>0)p.push(`RM${f(mml)} (Medical/Life 60%)`);
+    const s=med+mml;
+    m+=p.length>1?`然后把 ${p.join(' + ')} = *RM${f(Math.min(s,MMAX))}* 放在 *Medical*（Max RM4,000）一栏～\n\n`:`然后把 *RM${f(Math.min(s,MMAX))}* 放在 *Medical*（Max RM4,000）一栏～\n\n`;
+  }
+  if(epf>0)m+=`EPF 可报 *RM${f(ef)}*（Max RM4,000）～\n\n`;
+  m+=`祝你税岁平安！！有什么问题的话欢迎询问我～ 😊`;
+  return m;
+}
+function cp(mid,bid,fid){
+  const txt=document.getElementById(mid).textContent;
+  if(!txt||txt.startsWith('请输入'))return;
+  const btn=document.getElementById(bid),fb=fid?document.getElementById(fid):null;
+  const ok=()=>{btn.textContent='✅ 已复制！';btn.classList.add('done');if(fb)fb.style.display='none';setTimeout(()=>{btn.textContent='📋 一键复制 WhatsApp 信息';btn.classList.remove('done');},2500);};
+  const fail=()=>{btn.textContent='⚠ 请手动复制';if(fb)fb.style.display='block';};
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(txt).then(ok).catch(()=>lcp(txt,ok,fail));
+  else lcp(txt,ok,fail);
+}
+function lcp(t,ok,fail){
+  const ta=document.createElement('textarea');ta.value=t;ta.setAttribute('readonly','');
+  ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0;';
+  document.body.appendChild(ta);ta.focus();ta.select();
+  try{document.execCommand('copy')?ok():fail();}catch(e){fail();}
+  document.body.removeChild(ta);
+}
+async function pdfToJpeg(file){
+  if(!window.pdfjsLib)throw new Error('PDF.js 未加载');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const ab=await file.arrayBuffer();
+  const pdf=await window.pdfjsLib.getDocument({data:ab}).promise;
+  const page=await pdf.getPage(1);
+  const vp=page.getViewport({scale:2.5});
+  const cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;
+  await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+  return cv.toDataURL('image/jpeg',.95).split(',')[1];
+}
+async function imgToB64(file){
+  return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+}
+async function scanImg(b64,mt){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:400,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:mt,data:b64}},
+        {type:'text',text:`Malaysian insurance premium paid statement. Find the table with "Benefit Type" and "Amount (RM)" columns. Extract ONLY these rows:\n- LIFE → "life"\n- MEDICAL → "medical"\n- MEDICAL/LIFE → "medlife"\n- EPF or KWSP → "epf"\nIGNORE: OTHERS, ANNUITY, EDUCATION, RIDER, WAIVER\nAlso find policy holder name → "name"\nReturn ONLY JSON, no markdown:\n{"life":0,"medical":0,"medlife":0,"epf":0,"name":""}`}
+      ]}]
+    })
+  });
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message||JSON.stringify(d.error));
+  const raw=d.content.map(c=>c.text||'').join('').replace(/```[\s\S]*?```|```/g,'').trim();
+  return JSON.parse(raw);
+}
+const uz=document.getElementById('upZone');
+uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('over');});
+uz.addEventListener('dragleave',()=>uz.classList.remove('over'));
+uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('over');if(e.dataTransfer.files.length)doFiles(e.dataTransfer.files);});
+function onFiles(e){if(e.target.files.length)doFiles(e.target.files);e.target.value='';}
+async function doFiles(fl){
+  const files=Array.from(fl),total=files.length;let done=0;
+  const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pl=document.getElementById('progLbl'),pc=document.getElementById('progCnt');
+  pw.classList.add('show');pf.style.width='0%';pc.textContent=`0/${total}`;pl.textContent='正在处理...';
+  const ids=files.map(f=>mkCard(f.name));
+  for(let i=0;i<files.length;i++){
+    await doFile(files[i],ids[i]);
+    done++;pf.style.width=Math.round(done/total*100)+'%';pc.textContent=`${done}/${total}`;
+    pl.textContent=done<total?`正在处理第 ${done+1} 份...`:'✅ 全部完成！';
+  }
+  setTimeout(()=>pw.classList.remove('show'),3000);
+}
+function mkCard(fname){
+  const id=++cid;
+  const sn=fname.replace(/\.(pdf|jpe?g|png)$/i,'').substring(0,28);
+  const el=document.createElement('div');el.className='rcard';el.id=`c${id}`;
+  el.innerHTML=`<div class="rcard-head"><span>👤</span><input type="text" id="n${id}" placeholder="顾客名字（可选）" oninput="rf(${id})"><div class="fbadge" title="${fname}">${sn}</div><button class="del-btn" onclick="document.getElementById('c${id}').remove()">✕</button></div><div class="rcard-body"><div class="srow loading" id="s${id}"><div class="spin"></div><span>准备中...</span></div><div id="ct${id}" style="display:none"><div class="agrid"><div class="abox L"><div class="albl">Life</div><input class="ainput" id="al${id}" type="number" placeholder="0.00" min="0" step="0.01" oninput="rf(${id})"></div><div class="abox M"><div class="albl">Medical</div><input class="ainput" id="am${id}" type="number" placeholder="0.00" min="0" step="0.01" oninput="rf(${id})"></div><div class="abox ML"><div class="albl">Med/Life</div><input class="ain
